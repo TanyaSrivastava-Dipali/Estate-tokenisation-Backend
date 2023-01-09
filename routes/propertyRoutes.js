@@ -6,6 +6,7 @@ const Router = express.Router();
 
 Router.route("/CreateProperty").post(PropertyController.createNewProperty);
 Router.route("/changeListingStatus/:propertyTokenId").patch(PropertyController.changeListingStatus);
+Router.route("/enterRentalPropertyDetails/:propertyTokenId").patch(PropertyController.enterRentalPropertyDetails);
 Router.route("/getPropertystatus/:propertyTokenId").get(PropertyController.getPropertystatus);
 Router.route("/getAllPropertystatus").get(PropertyController.getAllPropertystatus);
 export default Router;
