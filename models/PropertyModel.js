@@ -12,10 +12,10 @@ const PropertySchema = new mongoose.Schema({
 		required: true,
 		default: false,
 	},
-	isCreated: {
+	isinitiated: {
 		type: Boolean,
 		required: true,
-		default: true,
+		default: false,
 	},
 });
 const PropertyModel = mongoose.model("PropertyModel", PropertySchema);

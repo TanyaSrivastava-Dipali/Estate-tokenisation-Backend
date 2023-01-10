@@ -154,22 +154,42 @@ export const enterRentalPropertyDetails = async (req, res) => {
 		});
 	}
 };
-
 // eslint-disable-next-line consistent-return
-export const changeListingStatus = async (req, res) => {
+export const initiateRentalPeriod = async (req, res) => {
 	try {
 		const Property = await PropertyModel.findOne({
 			propertyTokenId: req.params.propertyTokenId,
 		});
-		if (!Property) {
+		const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
+		const propertyManager = new ethers.Wallet(req.body.key, provider);
+		const rentalContractInstance = new ethers.Contract(
+			process.env.RENTAL_PROPERTY_CONTRACT_ADDRESS,
+			rentalPropertyContractABI,
+			provider
+		);
+		const ethTrx = await rentalContractInstance
+			.connect(propertyManager)
+			.initiateRentalPeriod(
+				req.params.propertyTokenId,
+				req.body.tenant,
+				req.body.rentalPeriodInDays,
+				req.body.amountTowardsMaintenanceReserve,
+				req.body.amountTowardsVacancyReserve,
+				{
+					value: ethers.utils.parseEther(req.body.value),
+				}
+			);
+		if (!ethTrx) {
 			return res.status(404).json({
 				status: "Fail",
-				message: "Not found Propertydetails for this propertyId",
+				message: "Either property not minted or not listed",
 			});
 			// eslint-disable-next-line no-else-return
 		} else {
-			Property.isListed = true;
-			await Property.save();
+			if (Property) {
+				Property.isinitiated = true;
+				await Property.save();
+			}
 			res.status(200).json({
 				status: "Success",
 				message: "listing status changed successfully",
@@ -179,6 +199,70 @@ export const changeListingStatus = async (req, res) => {
 	} catch (err) {
 		console.log(err);
 		res.status(400).json({
+			status: "Fail",
+			err,
+		});
+	}
+};
+export const distributeRentAmount = async (req, res) => {
+	try {
+		const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
+		const propertyManager = new ethers.Wallet(req.body.key, provider);
+		const rentalContractInstance = new ethers.Contract(
+			process.env.RENTAL_PROPERTY_CONTRACT_ADDRESS,
+			rentalPropertyContractABI,
+			provider
+		);
+		const ethTrx = await rentalContractInstance
+			.connect(propertyManager)
+			.distributeRentAmount(req.body.propertyTokenId, req.body.ownerList);
+		if (!ethTrx) {
+			throw new Error("Transaction Failed");
+		}
+		res.status(201).json({
+			status: "Success",
+			message: "rent distributed successfully",
+			ethTransaction: ethTrx,
+		});
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
+			status: "Fail",
+			err,
+		});
+	}
+};
+export const terminateRentalPeriod = async (req, res) => {
+	try {
+		const Property = await PropertyModel.findOne({
+			propertyTokenId: req.params.propertyTokenId,
+		});
+		const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545/");
+		const propertyManager = new ethers.Wallet(req.body.key, provider);
+		const rentalContractInstance = new ethers.Contract(
+			process.env.RENTAL_PROPERTY_CONTRACT_ADDRESS,
+			rentalPropertyContractABI,
+			provider
+		);
+		const ethTrx = await rentalContractInstance
+			.connect(propertyManager)
+			.terminateRentalPeriod(req.params.propertyTokenId);
+		if (!ethTrx) {
+			throw new Error("Transaction Failed");
+		} else {
+			if (Property) {
+				Property.isinitiated = false;
+				await Property.save();
+			}
+			res.status(201).json({
+				status: "Success",
+				message: "rental period terminated  successfully",
+				ethTransaction: ethTrx,
+			});
+		}
+	} catch (err) {
+		console.log(err);
+		res.status(500).json({
 			status: "Fail",
 			err,
 		});
